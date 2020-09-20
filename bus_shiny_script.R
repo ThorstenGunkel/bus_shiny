@@ -1,14 +1,12 @@
-
 #transdef GmbH shiny Beispiel
-
-#https://shiny.rstudio.com/gallery/nz-trade-dash.html
-
 
 library(shiny)
 library(shinydashboard)
 library(dplyr)
 library(ggplot2)
 library(palmerpenguins)
+library(lubridate)
+
 
 ui <- 
   dashboardPage(
@@ -59,7 +57,7 @@ ui <-
                  badgeColor = "green"),
         menuItem("Charts", icon = icon("bar-chart-o"),
                  menuSubItem("Sub-item 1", tabName = "subitem1"),
-                 menuSubItem("Sub-item 2", tabName = "subitem2")
+                 menuSubItem("Time series with grouped colors", tabName = "subitem2")
         )
       )
     ),
@@ -109,13 +107,14 @@ ui <-
         tabItem("subitem1",
                 h1( "Sub-item 1 tab content"),
                 fluidPage((
-                  box(plotOutput("plot1_ggplot_pen", height = 400))
+                  box(plotOutput("hist1_seats", height = 400))
+                  
                 ))
         ),
         tabItem("subitem2",
-                h1("Zeitreihe"),
+                h1("Zeitreihe aber aktuell noch pingus. dann ts_grouped"),
                 fluidPage((
-                  box(plotOutput("plot1_ggplot_ts", height = 400))
+                  box(plotOutput("ts_grouped", height = 400))
                 ))
         )
       )
@@ -131,7 +130,8 @@ ui <-
 
 server <- function(input, output) {
   
-  rides <- read.csv("/home/qwerty/Documents/R/transdev_bewerbung/zindi_bus/train_revised.csv") %>%
+  #getwd()
+  rides <- read.csv("train_revised.csv") %>%
     select(-seat_number, -payment_receipt, -max_capacity) %>%
     group_by(ride_id) %>%
     mutate(seats_booked = n())
@@ -154,67 +154,20 @@ server <- function(input, output) {
       theme(plot.title = element_text(hjust = 0.5))
   })
   
-  #time series per week?
-  
-  
-  
-  #alt:
-  df <- penguins
-  
-  output$plot1_penguin <- renderPlot({
-    df_hist <- df[seq_len(input$slider2),]
-    hist(df_hist$body_mass_g)
-  })
-  
-  output$plot1_ggplot_pen <- renderPlot({
-    df %>%
-      filter(species == "Adelie" | species == "Chinstrap") %>%
-      ggplot(aes(x = body_mass_g, fill = species )) + 
-      geom_histogram( color="grey", alpha=0.4, position = 'identity') +
-      scale_fill_manual(values=c("#69b3a2", "#404080")) +
+  output$ts_grouped <- renderPlot({
+    rides %>%
+      group_by(car_type, twoweeks = floor_date(travel_date, "days")) %>%
+      summarise( twoweekssum = sum(seats_booked), .groups = "keep") %>%
+      ggplot(aes(y = twoweekssum, x = twoweeks, color = car_type)) +
+      geom_line(alpha = 0.5) +
       theme_minimal() +
-      labs(fill="Species")  + 
-      labs(x = "Häufigkeit", y = "Gewicht in Gramm") +
-      ggtitle("Verteilung des Gewichts zweier Pinguinklassen")
-  })
-  
-  
-  
-  
-  output$plot1_ggplot_ts <- renderPlot({
-    df %>%
-      #      filter(species == "Adelie" | species == "Chinstrap") %>%
-      ggplot(aes(x = bill_depth_mm,y = bill_length_mm, color = species )) + 
-      geom_point() +
-      # geom_histogram( color="grey", alpha=0.4, position = 'identity') +
-      # scale_fill_manual(values=c("#69b3a2", "#404080")) 
-      theme_minimal() +
-      #       labs(fill="Species")  + 
       labs(x = "Variable X", y = "n") +
       ggtitle("scatter of X")
-  })
-  
-  #iher zum vergleich
-  set.seed(122)
-  histdata <- rnorm(500)
-  
-  output$plot1 <- renderPlot({
-    data <- histdata[seq_len(input$slider)]
-    hist(data)
   })
   
   
   #htime series with slider  
   output$tsplot <- renderPlot({
-    # rides %>%
-    #   filter(travel_date > input$slider2[1] & travel_date <  input$slider2[2] ) %>%
-    #   group_by(travel_date) %>%
-    #   summarise(seats_sum = sum(seats_booked)) %>%
-    #   ggplot(aes(x = travel_date, y = seats_sum)) + 
-    #   geom_line(color = "#006400", size = .5)
-    # 
-    
-    
     rides %>%
       filter(travel_date > input$slider2[1] & travel_date <  input$slider2[2] ) %>%
       group_by(travel_date) %>%
@@ -227,9 +180,7 @@ server <- function(input, output) {
               subtitle = "Data Source: https://zindi.africa/") + 
       theme(plot.title = element_text(hjust = 0.5),plot.subtitle = element_text(hjust = 0.5)) +
       theme(text = element_text(size = 15)) 
-    
   })
-  
 }
 
 
@@ -239,3 +190,4 @@ rm(ui, server)
 #df gibt am Anfang problee, weil es wohl ein efunktion densitifyfunction gib, ie df reserviert hat
 
 #idee daher: https://heartbeat.fritz.ai/predicting-bus-ticket-sales-using-machine-learning-dd2fcfe15392
+#https://shiny.rstudio.com/gallery/nz-trade-dash.html
