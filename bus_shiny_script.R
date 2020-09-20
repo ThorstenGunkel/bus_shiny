@@ -4,7 +4,6 @@ library(shiny)
 library(shinydashboard)
 library(dplyr)
 library(ggplot2)
-library(palmerpenguins)
 library(lubridate)
 
 
@@ -27,14 +26,14 @@ ui <-
                                              time = "2 hours"
                                  ),
                                  messageItem(
-                                   from = 'Twitter',
-                                   message = "",
-                                   icon = icon("twitter"),
-                                   href = "https://twitter.com/intent/tweet?url=http%3A%2F%2Ftradeintelligence.mbie.govt.nz&text=New%20Zealand%20Trade%20Intelligence%20Dashboard"
+                                   from = 'GitHub',
+                                   message = "this contains no message",
+                                   icon = icon("github"),
+                                   href = "https://github.com/ThorstenGunkel/bus_shiny"
                                  ),
                                  messageItem(
                                    from = 'LinkedIn',
-                                   message = "",
+                                   message = "Linkedinaccount",
                                    icon = icon("linkedin"),
                                    href = "http://www.linkedin.com/shareArticle?mini=true&url=" 
                                  )
@@ -44,8 +43,8 @@ ui <-
     
     
     dashboardSidebar(
-      sidebarUserPanel("Beispiel", 
-                       subtitle = a(href = "#", icon("circle", class = "text-success"), "Online")
+      sidebarUserPanel("works", 
+                       subtitle = a(href = "#", icon("circle", class = "text-success"), "Dashboard works")
       ),
       sidebarSearchForm(label = "Enter a number", "searchText", "searchButton"),
       
@@ -56,8 +55,10 @@ ui <-
         menuItem("Descriptive stuff_text", icon = icon("th"), tabName = "descr", badgeLabel = "new",
                  badgeColor = "green"),
         menuItem("Charts", icon = icon("bar-chart-o"),
-                 menuSubItem("Sub-item 1", tabName = "subitem1"),
-                 menuSubItem("Time series with grouped colors", tabName = "subitem2")
+                 menuSubItem("Histogram", tabName = "subitem1"),
+                 menuSubItem("Line plot (grouped)", tabName = "subitem2"),
+                 menuSubItem("Boxplot", tabName = "sub_boxplot")
+                 
         )
       )
     ),
@@ -71,11 +72,11 @@ ui <-
                 ## contents for the dashboard tab
                 div(p("Dashboard tab content")),
                 h1(paste0("time series diesdas ", 50)) ,
-                fluidRow(
-                  valueBoxOutput("ExTotBox"), #%>% withSpinner(type=4),
-                  valueBoxOutput("ImTotBox"),
-                  valueBoxOutput("BlTotBox")
-                ),
+       #         fluidRow(
+        #          valueBoxOutput("ExTotBox"), #%>% withSpinner(type=4),
+         #         valueBoxOutput("ImTotBox"),
+          #        valueBoxOutput("BlTotBox")
+           #     ),
                 
                 # Boxes need to be put in a row (or column)
                 fluidPage(
@@ -100,22 +101,24 @@ ui <-
                 h1(paste0("Descriptive statistics about the dataset ","rides")) ,
                 paste0("It contains ", nrow(rides), " rows and ", ncol(rides), "variables"),
                 br(),
-                paste0("The available variables are: ", names(rides[,1]))
+                paste0("The available variables are: ", names(rides[,1])),
+                paste0("ipsum")
         ),
         
         
         tabItem("subitem1",
                 h1( "Sub-item 1 tab content"),
-                fluidPage((
-                  box(plotOutput("hist1_seats", height = 400))
-                  
-                ))
+                plotOutput("hist1_seats")
         ),
         tabItem("subitem2",
                 h1("Zeitreihe aber aktuell noch pingus. dann ts_grouped"),
                 fluidPage((
                   box(plotOutput("ts_grouped", height = 400))
                 ))
+        ),
+        tabItem("sub_boxplot",
+                 h1( "Sub-item 3 Boxplots"),
+                plotOutput("boxplot")
         )
       )
     )
@@ -131,10 +134,18 @@ ui <-
 server <- function(input, output) {
   
   #getwd()
+  
+  #importing the dataset, 
+  #excluding seat number and vehicle capacity
+  #some IDs are duplicates i.e. whenever more than one seat is booked
+  #include a new variable for number of people per ride_id
+  
   rides <- read.csv("train_revised.csv") %>%
     select(-seat_number, -payment_receipt, -max_capacity) %>%
     group_by(ride_id) %>%
     mutate(seats_booked = n())
+  
+  rides <- rides[!duplicated(rides$ride_id),] #6249
   
   #correct the data format
   rides$travel_date <- as.Date(rides$travel_date, "%d-%m-%y")
@@ -181,6 +192,16 @@ server <- function(input, output) {
       theme(plot.title = element_text(hjust = 0.5),plot.subtitle = element_text(hjust = 0.5)) +
       theme(text = element_text(size = 15)) 
   })
+  
+  
+  #Graph boxplot
+  output$boxplot <- renderPlot({
+    rides %>%
+      group_by(monat = floor_date(travel_date, "month")) %>%
+      ggplot(aes(y = seats_booked, group = car_type)) + 
+      geom_boxplot(color = "black") +  
+      facet_grid(. ~ monat )
+    })
 }
 
 
