@@ -111,13 +111,21 @@ ui <-
                 plotOutput("hist1_seats")
         ),
         tabItem("subitem2",
-                h1("Zeitreihe aber aktuell noch pingus. dann ts_grouped"),
-                fluidPage((
-                  box(plotOutput("ts_grouped", height = 400))
-                ))
+                h1("Time series with groups and moving average"),
+                "test",
+                br(),
+                plotOutput("ts_grouped", height = 400),
+
+#                fluidPage((
+#                  box(plotOutput("ts_grouped", height = 400))
+#                )),
+                br(),
+                "test",
+                "noch ein Bild Zeitreihe, mit Moving average",
+                plotOutput("ts_bus_projection", height = 400)
         ),
         tabItem("sub_boxplot",
-                 h1( "Sub-item 3 Boxplots"),
+                 h1( "Even more graphs! This time: Boxplot"),
                 plotOutput("boxplot")
         )
       )
@@ -150,6 +158,7 @@ server <- function(input, output) {
   #correct the data format
   rides$travel_date <- as.Date(rides$travel_date, "%d-%m-%y")
   
+#######graphs
   
   #Histogramm: Distribution of booked_sitze overall
   #passt so.
@@ -165,6 +174,7 @@ server <- function(input, output) {
       theme(plot.title = element_text(hjust = 0.5))
   })
   
+  #hier gucken: variable inkonsistent etc. 
   output$ts_grouped <- renderPlot({
     rides %>%
       group_by(car_type, twoweeks = floor_date(travel_date, "days")) %>%
@@ -175,6 +185,20 @@ server <- function(input, output) {
       labs(x = "Variable X", y = "n") +
       ggtitle("scatter of X")
   })
+  
+  #
+  #time series for car_type = bus only and project the data for a few more weeks
+  output$ts_bus_projection <- renderPlot({
+    rides %>%
+      group_by(car_type, travel_date = floor_date(travel_date, "7days")) %>%
+      summarise( daysum = sum(seats_booked), .groups = "keep") %>%
+      ggplot(aes(y = daysum, x = travel_date, color = car_type)) +
+      geom_line(alpha = .5) +
+      theme_minimal() +
+      labs(x = "Time", y = "Tickets sold") +
+      ggtitle("Time series with projection")
+  })
+  
   
   
   #htime series with slider  
@@ -194,13 +218,31 @@ server <- function(input, output) {
   })
   
   
+  
+  #function to removethe last three characters for better labeling
+  remove_day <- function(string) {
+    gsub(".{3}$", "", string)
+  }
+  
   #Graph boxplot
   output$boxplot <- renderPlot({
     rides %>%
       group_by(monat = floor_date(travel_date, "month")) %>%
-      ggplot(aes(y = seats_booked, group = car_type)) + 
-      geom_boxplot(color = "black") +  
-      facet_grid(. ~ monat )
+      ggplot(aes(y = seats_booked, x = car_type)) + 
+      geom_boxplot(color = "black", varwidth = FALSE, width = 0.6, fill = "lightgrey") +  
+      facet_grid(. ~ monat, labeller = labeller(monat = remove_day) ) + 
+      labs(x = NULL,  y = "Tickets sold") + 
+      ggtitle("Distribution of number of tickets sold per day, shown by month", 
+              subtitle = "Data Source: https://zindi.africa/") + 
+      theme(plot.title = element_text(hjust = 0.5),plot.subtitle = element_text(hjust = 0.5)) +
+      theme(text = element_text(size = 15)) 
+    
+    
+    # rides %>%
+    #   group_by(monat = floor_date(travel_date, "month")) %>%
+    #   ggplot(aes(y = seats_booked, x = car_type)) + 
+    #   geom_boxplot(color = "black") +  
+    #   facet_grid(. ~ monat, labeller = labeller(monat = remove_day) )
     })
 }
 
