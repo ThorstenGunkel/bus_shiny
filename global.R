@@ -26,4 +26,4 @@ rides <- rides[!duplicated(rides$ride_id),] #6249
 #correct the data format
 rides$travel_date <- as.Date(rides$travel_date, "%d-%m-%y")
 
-runApp()
+#runApp()
