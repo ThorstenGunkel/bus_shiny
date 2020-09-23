@@ -1,5 +1,13 @@
 #ui.R
 
+library(shiny)
+library(shinydashboard)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(lubridate)
+library(rmarkdown)
+
 ###initialize user interface
 ui <- 
   dashboardPage(

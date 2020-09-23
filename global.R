@@ -8,7 +8,6 @@ library(ggplot2)
 library(plotly)
 library(lubridate)
 library(rmarkdown)
-#library(knitr)
 
 ###importing the data
 
