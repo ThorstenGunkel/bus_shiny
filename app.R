@@ -7,21 +7,43 @@ library(dplyr)
 library(ggplot2)
 library(plotly)
 library(lubridate)
+library(rmarkdown)
+#library(knitr)
+
+###importing the data
+
+#excluding seat number and vehicle capacity
+#some IDs are duplicates i.e. whenever more than one seat is booked
+#include a new variable for number of people per ride_id
+rides <- 
+  read.csv("train_revised.csv") %>%
+  select(-seat_number, -payment_receipt, -max_capacity) %>%
+  group_by(ride_id) %>%
+  mutate(seats_booked = n())
+
+#remove duplicated ride ids so it results  one line per ride
+rides <- rides[!duplicated(rides$ride_id),] #6249
+
+#correct the data format
+rides$travel_date <- as.Date(rides$travel_date, "%d-%m-%y")
+
+#function to remove the last three characters for better labeling
+remove_day <- function(string) {
+  gsub(".{3}$", "", string)
+}
 
 
 ###initialie user interface
 ui <- 
   dashboardPage(
-    dashboardHeader(title = HTML("Thorsten testet"), 
+    dashboardHeader(title = HTML("Shiny framework example"), 
                     disable = FALSE, 
                     titleWidth  = 600,
                     dropdownMenu(type = "tasks", badgeStatus = "danger",
-                                 taskItem(value = 40, color = "green",
+                                 taskItem(value = 30, color = "green",
                                           "Check out this shiny app"),
-                                 taskItem(value = 20, color = "yellow",
+                                 taskItem(value = 50, color = "yellow",
                                           "Invite me for a job interview")
-  #                               taskItem(value = 100, color = "red",
- #                                         "Win-win situation")
                     ),
                     dropdownMenu(type = "notifications", badgeStatus = "success", icon = icon("share-alt"),
                                  messageItem(
@@ -71,12 +93,11 @@ ui <-
                 # Boxes need to be put in a row (or column)
                 fluidPage(
                   
-                  #idee: boxen einführen, mit überschrift input output
                   
+                  #idee: boxen einführen, mit überschrift input output
     #              box(title = "Histogram", status = "primary", plotOutput("plot2", height = 250)),
                  
-                  
-                  
+
                   titlePanel("Contains interactive time series"),
                   column(4,  
                          wellPanel(h3("Inputs"), br(),
@@ -90,15 +111,7 @@ ui <-
                                        label = "Choose payment method",
                                        choices = c("Mpesa", "Cash"),
                                        selected = "Mpesa"
-                           )
-                           
-                           # ,
-                           # box( #dit is neu
-                           #   title = "Inputs", status = "warning",
-                           #   "Box content here", br(), "More box content",
-                           #   sliderInput("slider", "Slider input:", 1, 100, 50),
-                           #   textInput("text", "Text input:")
-                           # )
+                           )   
                          )
                   ),
                   column(8, plotlyOutput("tsplot"))
@@ -160,30 +173,11 @@ ui <-
 ### Initialise server function
 server <- function(input, output) {
   
-
-  ###importing the data
-  
-  #excluding seat number and vehicle capacity
-  #some IDs are duplicates i.e. whenever more than one seat is booked
-  #include a new variable for number of people per ride_id
-  
-  rides <- 
-    read.csv("train_revised.csv") %>%
-    select(-seat_number, -payment_receipt, -max_capacity) %>%
-    group_by(ride_id) %>%
-    mutate(seats_booked = n())
-  
-  #remove duplicated ride ids so it results  one line per ride
-  rides <- rides[!duplicated(rides$ride_id),] #6249
-  
-  #correct the data format
-  rides$travel_date <- as.Date(rides$travel_date, "%d-%m-%y")
-  
-  
-  
   ###Graphs
   
   #Histogramm: Distribution of booked seats overall
+  
+  #actually "renderPlot" is not yet needed, as long as no interactive elements are included.
   output$hist1_seats <- renderPlot({
     rides %>%
       ggplot(aes(x = seats_booked, fill = car_type )) + 
@@ -204,8 +198,9 @@ server <- function(input, output) {
       ggplot(aes(y = twoweekssum, x = twoweeks, color = car_type)) +
       geom_line(alpha = 0.5) +
       theme_minimal() +
+      theme(text = element_text(size = 10)) +
       labs(x = "Variable X", y = "n") +
-      ggtitle("scatter of X")
+      ggtitle("Sold bus tickets to Nairobi per day") 
   })
   
   #
@@ -220,19 +215,17 @@ server <- function(input, output) {
       stat_smooth(method="lm",fullrange=FALSE) + 
    #   stat_smooth(method="loess",fullrange=TRUE) + 
       theme_minimal() +
+      theme(text = element_text(size = 10)) +
       labs(x = "Time", y = "Tickets sold") +
       guides(col = FALSE) + 
-      ggtitle("Weekly ticket sales  with trend")
+      ggtitle("Weekly ticket sales  with trend")  
   })
-  
-  
+
   
   #htime series with slider  
-  
   options(dplyr.summarise.inform = FALSE)
   
   output$tsplot <- renderPlotly({
- #   ts_interact <-
     rides %>%
       filter(travel_date > input$ts_slider_input[1] & travel_date <  input$ts_slider_input[2] ) %>%
       filter(payment_method == input$ts_select_input) %>%
@@ -250,29 +243,28 @@ server <- function(input, output) {
   })
   
   
-  #function to removethe last three characters for better labeling
-  remove_day <- function(string) {
-    gsub(".{3}$", "", string)
-  }
-  
   #Graph boxplot
-  output$boxplot <- renderPlot({
-    rides %>%
-      group_by(monat = floor_date(travel_date, "month")) %>%
-      ggplot(aes(y = seats_booked, x = car_type)) + 
-      geom_boxplot(color = "black", varwidth = FALSE, width = 0.6, fill = "lightgrey") +  
-      facet_grid(. ~ monat, labeller = labeller(monat = remove_day) ) + 
-      labs(x = NULL,  y = "Tickets sold") + 
-      ggtitle("Distribution of number of tickets sold per day, shown by month", 
-              subtitle = "Data Source: https://zindi.africa/") + 
-      theme(plot.title = element_text(hjust = 0.5),plot.subtitle = element_text(hjust = 0.5)) +
-      theme(text = element_text(size = 15)) 
+  output$boxplot <- 
+    renderPlot({
+      rides %>%
+        group_by(monat = floor_date(travel_date, "month")) %>%
+        ggplot(aes(y = seats_booked, x = car_type)) + 
+        geom_boxplot(color = "black", varwidth = FALSE, width = 0.6, fill = "lightgrey") +  
+        facet_grid(. ~ monat, labeller = labeller(monat = remove_day) ) + 
+        labs(x = NULL,  y = "Tickets sold") + 
+        ggtitle("Distribution of number of tickets sold per day, shown by month", 
+                subtitle = "Data Source: https://zindi.africa/") + 
+        theme(plot.title = element_text(hjust = 0.5),plot.subtitle = element_text(hjust = 0.5)) +
+        theme(text = element_text(size = 15)) 
     })
+  
+  
+  
 }
 
 
 shinyApp(ui, server)
-rm(ui, server)
+rm(ui, server, rides)
 
 #https://shiny.rstudio.com/gallery/nz-trade-dash.html
 
