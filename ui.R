@@ -50,12 +50,15 @@ ui <-
         id = "tabs",
         menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
         menuItem("Descriptive text", icon = icon("th"), tabName = "descr", badgeLabel = "Text!",
-                 badgeColor = "green"),
+                 badgeColor = "green"
+        ),
         menuItem("Charts", icon = icon("bar-chart-o"),
                  menuSubItem("Histogram", tabName = "sub_hist"),
                  menuSubItem("Line plot (grouped)", tabName = "sub_ts"),
                  menuSubItem("Boxplot", tabName = "sub_boxplot")
-                 
+        ),
+        menuItem("Machine learning", 
+                 menuSubItem("k means", tabName = "kmeans")
         )
       )
     ),
@@ -63,7 +66,7 @@ ui <-
     
     #### Body 
     dashboardBody(
-      tabItems(
+      tabItems(  #tabItems contains many tabItem)
         tabItem(tabName = "dashboard",
                 fluidPage(
                   titlePanel("Contains interactive time series"),
@@ -130,7 +133,20 @@ ui <-
         tabItem("sub_boxplot",
                 h1( "Even more graphs! This time: Boxplot"),
                 plotOutput("boxplot")
+        ),
+        
+        tabItem("kmeans",
+                h1( "k-means clustering"),
+                fluidPage(
+                  numericInput("input_kmean_group", "Number of kmean groups:", 3, min = 1, max = 20)
+                ),
+                "test",#, input_kmean_group
+                plotOutput("kmeans")
+                
         )
-      )
-    )
-  )
+        
+        
+        
+       )#end of dashboard body tabitem
+    )#end of dashobard body
+  )#end of dashboardPage

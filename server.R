@@ -74,7 +74,7 @@ server <- function(input, output) {
   #Graph boxplot
   
   #function to remove the last three characters for better labeling
-  #should better be outside of server.R, but in this case is quite small,so nevermind
+  #should better be outside of server.R in global.R, but in this case is quite small,so nevermind
   remove_day <- function(string) {
     gsub(".{3}$", "", string)
   }
@@ -88,6 +88,36 @@ server <- function(input, output) {
         facet_grid(. ~ monat, labeller = labeller(monat = remove_day) ) + 
         labs(x = NULL,  y = "Tickets sold") + 
         ggtitle("Distribution of number of tickets sold per day, shown by month", 
+                subtitle = "Data Source: https://zindi.africa/") + 
+        theme(plot.title = element_text(hjust = 0.5),plot.subtitle = element_text(hjust = 0.5)) +
+        theme(text = element_text(size = 15)) 
+    })
+  
+  #introducing kmeans
+  #calculating kmeans - must be the same as in the plot
+  k_number = 3
+  
+  #calculate test dataset only for kmeans example
+  kmeans_xmpl <- 
+  rides %>% 
+    group_by(day = floor_date(travel_date, "day")) %>%
+    summarise(seats_pday  = sum(seats_booked), .groups = "keep" )
+    
+  kmeans(kmeans_xmpl$seats_pday, 2)  
+  
+  
+  #kmeans plot
+  output$kmeans <- 
+    renderPlot({
+      rides %>%
+        group_by(day = floor_date(travel_date, "day")) %>%
+        summarise( seats_pday  = sum(seats_booked), .groups = "keep") %>%
+        
+        ggplot(aes(x = day, y=seats_pday)) +
+        geom_point(color = kmeans(kmeans_xmpl$seats_pday, 5)$cluster) + #for testing: explicit numerical input
+#        geom_point(color = kmeans(kmeans_xmpl$seats_pday, input$input_kmean_group)$cluster) #variable as kmeans input
+       labs(x = NULL,  y = "Tickets sold") + 
+        ggtitle("kmeans example - Distribution of number of tickets sold per day", 
                 subtitle = "Data Source: https://zindi.africa/") + 
         theme(plot.title = element_text(hjust = 0.5),plot.subtitle = element_text(hjust = 0.5)) +
         theme(text = element_text(size = 15)) 
